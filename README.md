@@ -14,6 +14,24 @@ A low-cost, Arduino-based cable tester that scans **32 lines** using **two 16-ch
 
 ---
 
+## Dependencies (Arduino Libraries)
+
+Install via **Arduino Library Manager** (Sketch → Include Library → Manage Libraries):
+
+| Library               | Author             | Tested Version |
+|-----------------------|--------------------|----------------|
+| `LiquidCrystal_I2C`   | Frank de Brabander | 1.1.2          |
+
+The firmware uses the LCD at I²C address `0x27` by default. If your module is
+`0x3F`, uncomment the `lcd = &lcd2` line in `setup()` (see `firmware.ino:70`).
+
+To find your LCD address, run an **I²C Scanner** sketch:
+```
+File → Examples → Wire → i2c_scanner
+```
+
+---
+
 ## Bill of Materials (BOM)
 - 1× Arduino UNO (or compatible 5V board)
 - 4× CD74HC4067 (16-ch MUX/DEMUX; using 2 as MUX, 2 as DEMUX)
@@ -31,6 +49,11 @@ A low-cost, Arduino-based cable tester that scans **32 lines** using **two 16-ch
 ---
 
 ## Wiring Overview
+
+> 📐 **Visual wiring diagrams** → see [WIRING.md](WIRING.md) for ASCII layout,
+> signal bus details, and a one-page cheat-sheet.
+
+
 
 ### Signal Buses
 - **MUX SIG bus**: `D12 (OUTPUT) → 1 kΩ → MUX1 SIG + MUX2 SIG`
