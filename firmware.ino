@@ -43,7 +43,7 @@ void lcdShow(int src1b, int hits, int hit1b){
     if(hit1b==src1b) lcd->print(F("OK correct      "));
     else {
       lcd->print(F("CROSS->")); lcd->print(hit1b);
-      int cur = 7 + (hit1b>=10? (hit1b>=100?3:2):1);
+      int cur = 7 + (hit1b >= 10 ? 2 : 1);
       for(int i=cur;i<16;i++) lcd->print(' ');
     }
   } else {

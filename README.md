@@ -14,6 +14,13 @@ A low-cost, Arduino-based cable tester that scans **32 lines** using **two 16-ch
 
 ---
 
+## Getting Started
+
+1. **Clone** this repo
+2. Arduino IDE requires `.ino` files in a same-named folder — rename the cloned
+   folder to `firmware` (or copy `firmware.ino` into a `firmware/` subfolder)
+3. Open `firmware.ino` in Arduino IDE, install the dependencies below, and upload
+
 ## Dependencies (Arduino Libraries)
 
 Install via **Arduino Library Manager** (Sketch → Include Library → Manage Libraries):
