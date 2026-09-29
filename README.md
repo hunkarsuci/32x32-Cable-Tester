@@ -1,111 +1,43 @@
-# Cable Tester 32×32 (Arduino + CD74HC4067 + I²C LCD)
+# 32-line cable continuity and mapping tester
 
-A low-cost, Arduino-based cable tester that scans **32 lines** using **two 16-channel multiplexers (MUX)** and **two 16-channel demultiplexers (DEMUX)**. It detects **OK**, **OPEN**, **CROSS**, and **SHORT** conditions and shows live status on an I²C LCD while logging details over Serial.
+An Arduino Uno sketch that scans a 32 × 32 source-to-sink connection matrix through four CD74HC4067 analog multiplexers. For each driven source, it checks all 32 sink positions and reports the observed mapping on a 16 × 2 I²C LCD and at 115200 baud over Serial.
 
+The repository contains [firmware](firmware.ino) and a [wiring guide](WIRING.md). It does not contain a recorded hardware test report, photographs, or an automated test harness. The status labels below describe the firmware's classification logic, not measured fault-detection performance.
 
----
+| Sink positions detected for one source | Firmware result | Interpretation |
+| --- | --- | --- |
+| None | `OPEN` | No continuity at any scanned sink |
+| Exactly one, same index | `OK` | Expected one-to-one connection |
+| Exactly one, different index | `CROSS` | Connection reaches another sink |
+| More than one | `SHORT` | Multiple sink positions respond |
 
-## Features
-- Tests up to **32 wires** (2× CD74HC4067 as sources, 2× as sinks)
-- **1-based indexing**: Pins **1..16** map to MUX1/DEMUX1 C0..C15, **17..32** map to MUX2/DEMUX2 C0..C15
-- **Live LCD** status + detailed **Serial** logs
-- Robust logic: classifies **OK / OPEN / CROSS / SHORT**
-- Breadboard friendly; easy to extend beyond 32 lines
+A `SHORT` result identifies multiple responding paths, but this scan alone cannot locate a physical short or distinguish every possible cable fault topology. It tests continuity and mapping; it does not measure resistance, insulation, intermittent contact, or performance under load.
 
----
+## Hardware and wiring
 
-## Getting Started
+- Arduino Uno or compatible 5 V board
+- Four CD74HC4067 devices: two 16-channel source banks and two 16-channel sink banks
+- 16 × 2 LCD with a PCF8574 I²C backpack
+- 1 kΩ resistor between Uno D12 and the shared source signal bus
+- 10 kΩ pull-down on the shared sink bus at A0
+- Four 10 kΩ enable pull-ups, one per multiplexer
+- Power-rail capacitors and local 0.1 µF decoupling close to each multiplexer
+- Cable fixture and common-ground wiring appropriate to the board
 
-1. **Clone** this repo
-2. Arduino IDE requires `.ino` files in a same-named folder — rename the cloned
-   folder to `firmware` (or copy `firmware.ino` into a `firmware/` subfolder)
-3. Open `firmware.ino` in Arduino IDE, install the dependencies below, and upload
+The source address lines S0–S3 use D4–D7; sink address lines use D8–D11. Source bank enables use A1 and D13; sink bank enables use D3 and D2. The LCD uses A4/A5 for SDA/SCL. Inputs 1–16 map to bank 0 channels 0–15; 17–32 map to bank 1 channels 0–15. The complete connection table and signal-bus layout are in [WIRING.md](WIRING.md). Check the CD74HC4067 voltage ratings and wiring before powering the circuit.
 
-## Dependencies (Arduino Libraries)
+## Build and run
 
-Install via **Arduino Library Manager** (Sketch → Include Library → Manage Libraries):
+The sketch is stored at the repository root as `firmware.ino`. Arduino IDE expects a sketch file inside a folder of the same base name: copy it to `firmware/firmware.ino`, or place the cloned contents in a folder named `firmware` before opening it.
 
-| Library               | Author             | Tested Version |
-|-----------------------|--------------------|----------------|
-| `LiquidCrystal_I2C`   | Frank de Brabander | 1.1.2          |
+Install `LiquidCrystal_I2C` (Frank de Brabander, version 1.1.2 as documented for this sketch) through the Arduino Library Manager. The sketch defaults to LCD address `0x27`. For a `0x3F` backpack, select `lcd2` and initialize/backlight that instance in `setup()`; the commented example is next to the current `lcd1.init()` call. Use an I²C scanner if the address is unknown.
 
-The firmware uses the LCD at I²C address `0x27` by default. If your module is
-`0x3F`, uncomment the `lcd = &lcd2` line in `setup()` (see `firmware.ino:70`).
+Upload to the Uno, open Serial Monitor at **115200 baud**, and connect a known-good cable before introducing fault examples. The scan advances through all 32 sources; each Serial row contains the source index, classification, and a note. The LCD shows the current source and detected sink or fault class. The sketch pauses 150 ms after each source and 600 ms at the end of a scan.
 
-To find your LCD address, run an **I²C Scanner** sketch:
-```
-File → Examples → Wire → i2c_scanner
-```
+A `platformio.ini` is present, but the repository does not use PlatformIO's standard `src/main.cpp` layout. Arduino IDE is the documented build route; a PlatformIO build needs its source layout configured separately.
 
----
+## What to verify on a physical build
 
-## Bill of Materials (BOM)
-- 1× Arduino UNO (or compatible 5V board)
-- 4× CD74HC4067 (16-ch MUX/DEMUX; using 2 as MUX, 2 as DEMUX)
-- 1× 16×2 I²C LCD (PCF8574 backpack, address 0x27 or 0x3F)
-- Resistors:
-  - 1× **1 kΩ** (Arduino D12 → MUX SIG bus protection)
-  - 1× **10 kΩ** (DEMUX SIG bus pull-down to GND)
-  - 4× **10 kΩ** (EN pull-ups: MUX1/MUX2/DEMUX1/DEMUX2 → VCC)
-- Capacitors:
-  - 2× **10 µF** electrolytic (one per breadboard rails)
-  - *(Recommended)* 4× **0.1 µF** ceramic (one per IC, close to VCC/GND)
-- 2× breadboards + jumper wires
-- The cable under test (up to 32 lines)
+Record the board, LCD library version/address, supply voltage, fixture wiring, and a Serial log for at least these cases: 1→1 and 32→32 continuity, an open source, a single crossed connection, and one source connected to two sinks. Compare each displayed class with the fixture's known wiring. Repeat scans to investigate contact bounce or intermittent behavior. No such measurements are committed here, so hardware reliability and detection coverage remain unverified.
 
----
-
-## Wiring Overview
-
-> 📐 **Visual wiring diagrams** → see [WIRING.md](WIRING.md) for ASCII layout,
-> signal bus details, and a one-page cheat-sheet.
-
-
-
-### Signal Buses
-- **MUX SIG bus**: `D12 (OUTPUT) → 1 kΩ → MUX1 SIG + MUX2 SIG`
-- **DEMUX SIG bus**: `A0 (INPUT) ← DEMUX1 SIG + DEMUX2 SIG`, with `10 kΩ → GND`
-
-### Shared Address Lines (parallel)
-- **MUX S0..S3**: `D4, D5, D6, D7` → both MUX1 & MUX2
-- **DEMUX S0..S3**: `D8, D9, D10, D11` → both DEMUX1 & DEMUX2
-
-### Enable (active-LOW, each with 10 kΩ pull-up to its local VCC)
-- **MUX1 EN** ← `A1`
-- **MUX2 EN** ← `D13`
-- **DEMUX1 EN** ← `D3`
-- **DEMUX2 EN** ← `D2`
-
-### LCD (I²C)
-- SDA → `A4`, SCL → `A5`, VCC → `5V`, GND → `GND`  
-- Address typically `0x27` (some are `0x3F`)
-
-### Power
-- Arduino 5V/GND → Board-1 rails → Board-2 rails (star distribution)  
-- 10 µF across rails on each board; add 0.1 µF ceramics near each CD74HC4067 if available.
-
----
-
-## Full Pin Mapping
-
-| Arduino | Function      | Connected To                                  | Notes              |
-|--------:|----------------|-----------------------------------------------|--------------------|
-| D2      | EN_DEMUX2     | DEMUX2 EN (10 kΩ pull-up to VCC)              | Active-LOW         |
-| D3      | EN_DEMUX1     | DEMUX1 EN (10 kΩ pull-up to VCC)              | Active-LOW         |
-| D4      | MUX S0        | MUX1 S0, MUX2 S0                              | Shared line        |
-| D5      | MUX S1        | MUX1 S1, MUX2 S1                              | Shared line        |
-| D6      | MUX S2        | MUX1 S2, MUX2 S2                              | Shared line        |
-| D7      | MUX S3        | MUX1 S3, MUX2 S3                              | Shared line        |
-| D8      | DEMUX S0      | DEMUX1 S0, DEMUX2 S0                          | Shared line        |
-| D9      | DEMUX S1      | DEMUX1 S1, DEMUX2 S1                          | Shared line        |
-| D10     | DEMUX S2      | DEMUX1 S2, DEMUX2 S2                          | Shared line        |
-| D11     | DEMUX S3      | DEMUX1 S3, DEMUX2 S3                          | Shared line        |
-| D12     | SIG_SRC       | MUX SIG bus (through 1 kΩ)                    | Drives HIGH        |
-| D13     | EN_MUX2       | MUX2 EN (10 kΩ pull-up to VCC)                | Active-LOW         |
-| A0      | SIG_SNK       | DEMUX SIG bus (10 kΩ pull-down to GND)        | Reads continuity   |
-| A1      | EN_MUX1       | MUX1 EN (10 kΩ pull-up to VCC)                | Active-LOW         |
-| A4      | LCD SDA       | PCF8574 SDA                                   | I²C address 0x27/0x3F |
-| A5      | LCD SCL       | PCF8574 SCL                                   |                    |
-| 5V/GND  | Power         | Breadboard rails → all ICs                    | Decoupling on rails|
-
----
+The firmware energizes one source bank/channel at a time and scans both sink banks, disabling the sink bank between passes. It is a prototype for controlled low-voltage continuity tests, not a certified cable tester. See [LICENSE](LICENSE).
